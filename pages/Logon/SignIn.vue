@@ -3,7 +3,7 @@
     <div class="mx-auto w-full sm:max-w-xl lg:max-w-2xl xl:max-w-3xl">
       <div class="">
         <div class="m-1">
-          <img src="~/public/favicon.ico" alt="phonebook-icon" class="p-2 m-auto" />
+          <img src="~/assets/favicon.ico" alt="phonebook-icon" class="p-2 m-auto" />
         </div>
         <div class="p-4 sm:rounded-sm sm:shadow-md sm:shadow-blue-400">
           <div class="pb-4">
