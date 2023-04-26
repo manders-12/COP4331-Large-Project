@@ -4,7 +4,7 @@ const cors = require('cors');
 
 const MongoClient = require('mongodb').MongoClient;
 //INSERT CORRECT URL
-const url = 'mongodb+srv://michaela12:1234@cluster0.iuw6cpn.mongodb.net/COP4331Cards?retryWrites=true&w=majority';
+const url = 'mongodb+srv://DBUserLP:o809F5cn9AMYPkdx@cluster0.3ngbphf.mongodb.net?retryWrites=true&w=majority';
 
 const client = new MongoClient(url);
 client.connect();
@@ -33,43 +33,50 @@ app.post('/api/login', async (req, res, next) =>
   // outgoing: id, firstName, lastName, error
 	
   var error = '';
-
-  const { login, password } = req.body;
-  //INSERT DATABASE NAME
-  const db = client.db("INSERT DATABASE NAME");
-  const results = await db.collection('Users').find({Login:login,Password:password}).toArray();
-
-  var id = -1;
-  var fn = '';
-  var ln = '';
-
-  if( results.length > 0 )
-  {
-    id = results[0].UserID;
-    fn = results[0].FirstName;
-    ln = results[0].LastName;
+  try{
+    const { username, password } = req.body;
+    //INSERT DATABASE NAME
+    const db = client.db("JournalEntriesDB");
+    const results = await db.collection('users').find({Username:username,Password:password}).toArray();
+  
+    var id = -1;
+    var fn = '';
+    var ln = '';
+  
+    if( results.length > 0 )
+    {
+      id = results[0]._id;
+      fn = results[0].FirstName;
+      ln = results[0].LastName;
+      ll = results[0].LastEntry;
+    }
+  }
+  catch(e){
+    error = e.toString();
+    next(e);
   }
 
-  var ret = { id:id, firstName:fn, lastName:ln, error:''};
+
+  var ret = { id:id, firstName:fn, lastName:ln, lastLoggedIn:ll, error:''};
   res.status(200).json(ret);
 });
 
 app.post('/api/addEntry', async (req, res, next) =>
 {
-  // incoming: userId, journal entry
+  // incoming: userId, journal text
   // outgoing: error
 	
-  const { userId, entry } = req.body;
+  const { userId, text } = req.body;
 
-  const newEntry = {Entry:entry,UserId:userId};
+  const newEntry = {JournalText:text,User_ID:userId};
   var error = '';
 
   try
   {
     //INSERT DB NAME
-    const db = client.db('COP4331Cards');
+    const db = client.db('JournalEntriesDB');
     // INSERT COLLECTION NAME
-    const result = db.collection('Cards').insertOne(newEntry);
+    const result = db.collection('Entries').insertOne(newEntry);
   }
   catch(e)
   {
@@ -84,20 +91,28 @@ app.post('/api/searchEntries', async (req, res, next) =>
 {
   // incoming: startDate, endDate, userId
   // outgoing: results[], error
-
+  
   var error = '';
-
-  const { startDate, endDate, userId } = req.body;
-  
-  const db = client.db();
-  const results = await db.collection('Entries').find({"date":{$get: new Date(startDate), $let: new Date(endDate)}}).toArray();
-  
-  var _ret = [];
-  for( var i=0; i<results.length; i++ )
-  {
-    _ret.push( results[i].Entry );
+  try{
+    const { startYear, startMonth, startDay, endYear, endMonth, endDay, userId } = req.body;
+    const db = client.db('JournalEntriesDB');
+    const results = await db.collection('Entries').find({EntryDate:{$gte:new Date(startYear, startMonth, startDay).toISOString(), $lte:new Date(endYear, endMonth, endDay).toISOString()},User_ID:userId}).toArray();
+    
+    var _ret = [];
+    for( var i=0; i<results.length; i++ )
+    {
+      _ret.push( results[i].JournalText );
+    }
   }
+  catch(e){
+    error = e.toString();
+    next(e);
+  }
+
+
   
   var ret = {results:_ret, error:error};
   res.status(200).json(ret);
 });
+
+app.listen(5000);
