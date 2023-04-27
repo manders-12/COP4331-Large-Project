@@ -94,10 +94,9 @@ app.post('/api/searchEntries', async (req, res, next) =>
   
   var error = '';
   try{
-    const { startYear, startMonth, startDay, endYear, endMonth, endDay, userId } = req.body;
+    const { startDate, endDate, userId } = req.body;
     const db = client.db('JournalEntriesDB');
-    const results = await db.collection('Entries').find({EntryDate:{$gte:new Date(startYear, startMonth, startDay).toISOString(), $lte:new Date(endYear, endMonth, endDay).toISOString()},User_ID:userId}).toArray();
-    
+    const results = await db.collection('Entries').find({EntryDate:{$gte:new Date(startDate).setHours(00, 00, 00), $lte:new Date(endDate).setHours(23, 59, 59)},User_ID:userId}).toArray();
     var _ret = [];
     for( var i=0; i<results.length; i++ )
     {
