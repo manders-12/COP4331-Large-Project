@@ -42,14 +42,16 @@ app.post('/api/login', async (req, res, next) =>
     var id = -1;
     var fn = '';
     var ln = '';
+    var le = '';
   
     if( results.length > 0 )
     {
       id = results[0]._id;
       fn = results[0].FirstName;
       ln = results[0].LastName;
-      ll = results[0].LastEntry;
+      le = results[0].LastEntry;
     }
+    var ret = { id:id, firstName:fn, lastName:ln, lastEntry:le, error:''};
   }
   catch(e){
     error = e.toString();
@@ -57,8 +59,10 @@ app.post('/api/login', async (req, res, next) =>
   }
 
 
-  var ret = { id:id, firstName:fn, lastName:ln, lastLoggedIn:ll, error:''};
-  res.status(200).json(ret);
+  if (id != -1){
+    res.status(200).json(ret);
+  }
+  else res.status(401).json(ret);
 });
 
 app.post('/api/addEntry', async (req, res, next) =>
@@ -66,9 +70,9 @@ app.post('/api/addEntry', async (req, res, next) =>
   // incoming: userId, journal text
   // outgoing: error
 	
-  const { userId, text } = req.body;
-
-  const newEntry = {JournalText:text,User_ID:userId};
+  const { userId, text, date } = req.body;
+  const newDate = new Date(date);
+  const newEntry = {JournalText:text,User_ID:userId,EntryDate:newDate};
   var error = '';
 
   try
@@ -77,6 +81,72 @@ app.post('/api/addEntry', async (req, res, next) =>
     const db = client.db('JournalEntriesDB');
     // INSERT COLLECTION NAME
     const result = db.collection('Entries').insertOne(newEntry);
+    const dt = Date.now()
+    db.collection('users').updateOne({_id:userId},{$set: {LastEntry: dt}});
+  }
+  catch(e)
+  {
+    error = e.toString();
+  }
+
+  var ret = { error: error };
+  res.status(200).json(ret);
+});
+
+app.post('/api/register', async (req, res, next) =>
+{
+  // incoming: userId, journal text
+  // outgoing: error
+	
+  const { username, password, firstName, lastName, emailAddress } = req.body;
+
+  const newUser = {Username:username,Password:password,FirstName:firstName,LastName:lastName,email:emailAddress};
+  var error = '';
+
+  try
+  {
+    //INSERT DB NAME
+    const db = client.db('JournalEntriesDB');
+    // INSERT COLLECTION NAME
+    const result = db.collection('users').insertOne(newUser);
+    const results = await db.collection('users').find({Username:username,Password:password}).toArray();
+    var id = -1;
+  
+    if( results.length > 0 )
+    {
+      id = results[0]._id;
+      var ret = {id: id, error: error };
+      res.status(200).json(ret);
+    }
+    else {
+        res.status(400).json(ret);
+    }
+  }
+  catch(e)
+  {
+    error = e.toString();
+  }
+
+  var ret = {id: id, error: error };
+  
+});
+
+app.post('/api/updateUser', async (req, res, next) =>
+{
+  // incoming: userId, journal text
+  // outgoing: error
+	
+  const { userId, firstName, lastName, emailAddress } = req.body;
+
+  const newUser = {FirstName:firstName,LastName:lastName,email:emailAddress};
+  var error = '';
+
+  try
+  {
+    //INSERT DB NAME
+    const db = client.db('JournalEntriesDB');
+    // INSERT COLLECTION NAME
+    const result = db.collection('users').updateOne({_id:userId},{$set: newUser});
   }
   catch(e)
   {
@@ -94,13 +164,16 @@ app.post('/api/searchEntries', async (req, res, next) =>
   
   var error = '';
   try{
-    const { startDate, endDate, userId } = req.body;
+    const { userId, startDate, endDate } = req.body;
     const db = client.db('JournalEntriesDB');
-    const results = await db.collection('Entries').find({EntryDate:{$gte:new Date(startDate).setHours(00, 00, 00), $lte:new Date(endDate).setHours(23, 59, 59)},User_ID:userId}).toArray();
+    const sDate = new Date(startDate);
+    const eDate = new Date(endDate);
+    const results = await db.collection('Entries').find({EntryDate:{$gte: sDate, $lte: eDate},User_ID:userId}).toArray();
     var _ret = [];
     for( var i=0; i<results.length; i++ )
     {
       _ret.push( results[i].JournalText );
+      _ret.push( results[i].EntryDate );
     }
   }
   catch(e){
